@@ -11,7 +11,9 @@ const {
   addExpenses,
   UpdateExpenses,
   deleteExpens,
-  totalPayHistory
+  totalPayHistory,
+  addServices,
+  updateGymProfile
 
 } = require("../controllers/GymControllers");
 const verifyJWT = require("../middlewares/authMiddileware");
@@ -19,7 +21,9 @@ const upload = require("../middlewares/multer");
 const router = require("express").Router();
 
 router.post("/createGym", upload.single("logo"), createGym);
+router.put("/update-profile", verifyJWT,upload.single("logo"), updateGymProfile);
 router.get("/getGym/:gymId", getGymById);
+router.post("/add-service",verifyJWT, addServices);
 router.put("/updatePayments/:id", updatePayments);
 router.put("/updateServicesFees", verifyJWT, updateServicesFees);
 router.post("/add-team", verifyJWT, addTeam);

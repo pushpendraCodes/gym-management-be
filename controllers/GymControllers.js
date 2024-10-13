@@ -41,7 +41,7 @@ const createGym = async (req, res) => {
       //   subscriptionStartDate,
       //   subscriptionEndDate,
       gymCapacity,
-      servicesOffered,
+      // servicesOffered,
       gymOpeningHours,
       subscriptionDiscount,
       paymentHistory,
@@ -121,7 +121,7 @@ const createGym = async (req, res) => {
       subscriptionStartDate: new Date().toISOString(),
       subscriptionEndDate,
       gymCapacity,
-      servicesOffered,
+      servicesOffered: [],
       gymOpeningHours,
       subscriptionDiscount,
       gymLogo: logoImage?.url || "",
@@ -514,14 +514,126 @@ const deleteExpens = async (req, res) => {
 const totalPayHistory = async (req, res) => {
   try {
     let feesHistory = await Fees.find({ gymId: req.gym._id });
-    return res.json({ message: "fees history fetched  successfully", feesHistory: feesHistory });
+    return res.json({
+      message: "fees history fetched  successfully",
+      feesHistory: feesHistory,
+    });
   } catch (error) {
     console.error("Error find the fees history:", error);
-    return res.status(500).json({ error: "Error while fetching payment history." });
+    return res
+      .status(500)
+      .json({ error: "Error while fetching payment history." });
+  }
+};
+
+const addServices = async (req, res) => {
+  try {
+    const { serviceName, monthly, quarterly, yearly } = req.body;
+    console.log(req.body, "bdoy");
+
+    // Validate required fields and ensure they are numbers
+    if (!serviceName || !monthly || !quarterly || !yearly) {
+      return res.status(400).json({
+        message: "Invalid input. All fields are required.",
+      });
+    }
+
+    // Find gym by ID, which should exist in req.gym (assuming it's set by middleware)
+    const gym = await Gym.findById(req.gym._id);
+
+    if (!gym) {
+      return res.status(404).json({ message: "Gym not found." });
+    }
+
+    // Calculate the next service number
+    const serviceNumber = gym.servicesOffered?.length
+      ? gym.servicesOffered.length + 1
+      : 1;
+
+    // Prepare new service object
+    const newService = {
+      serviceNumber,
+      serviceName,
+      serviceCharge: {
+        monthly: Number(monthly),
+        quarterly: Number(quarterly),
+        yearly: Number(yearly),
+      },
+    };
+
+    // Add new service to the gym's servicesOffered array
+    gym.servicesOffered.push(newService);
+
+    // Save the updated gym with new service (using validateModifiedOnly for efficiency)
+    await gym.save({ validateModifiedOnly: true });
+
+    return res
+      .status(201)
+      .json({ message: "Service added successfully", gym: gym });
+  } catch (error) {
+    console.error("Error adding service:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+const updateGymProfile = async (req, res) => {
+  const id = req.gym._id;
+  const { email, gymAddress, gymCapacity, gymOwnerMobile } = req.body;
+
+  try {
+    // Create an empty object to hold fields to update
+    const updateData = {};
+
+    // Only add the fields that are provided in the request body
+
+    if (email) updateData.email = email;
+    if (gymAddress) updateData.gymAddress = gymAddress;
+    if (gymCapacity) updateData.gymCapacity = gymCapacity;
+    if (gymOwnerMobile) updateData.gymOwnerMobile = gymOwnerMobile;
+
+    let logoImageLocalPath, logoImage;
+    if (req.file) {
+      console.log(req.file, "file");
+      logoImageLocalPath = req.file.path;
+      logoImage = await uploadOnCloudinary(logoImageLocalPath);
+      console.log(logoImage, "url");
+      updateData.gymLogo = logoImage.secure_url;
+    }
+
+    // Check if there are any fields to update
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No fields provided for update" });
+    }
+
+    // Find the gym by ID and update it
+    const updatedGym = await Gym.findByIdAndUpdate(
+      id,
+      { $set: updateData }, // $set only updates the provided fields
+      { new: true } // Return the updated gym profile
+    );
+
+    if (!updatedGym) {
+      return res.status(404).json({ message: "Gym not found" });
+    }
+
+    res.status(200).json({
+      message: "Gym profile updated successfully",
+      gym: updatedGym,
+    });
+  } catch (error) {
+    console.error("Error updating gym profile:", error);
+    res.status(500).json({
+      message: "Server error while updating gym profile",
+      error: error.message,
+    });
   }
 };
 
 module.exports = {
+  updateGymProfile,
+  addServices,
   deleteExpens,
   totalPayHistory,
   UpdateExpenses,

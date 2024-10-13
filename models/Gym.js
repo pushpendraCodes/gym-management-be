@@ -23,8 +23,7 @@ const GymSchema = new Schema(
     // Password (6-12 characters long)
     password: {
       type: String,
-      minlength: [6, "Minimum password length is 6 characters"],
-      maxlength: [12, "Maximum password length is 12 characters"],
+
       required: true,
     },
     teams: [
@@ -68,10 +67,13 @@ const GymSchema = new Schema(
     // List of services offered by the gym
     servicesOffered: [
       {
-        serviceName: {
+        serviceNumber: {
           type: Number,
           required: true,
-          enum: [1, 2, 3, 4, 5, 6], // 1 - Cardio Male, 2 - Cardio Female, 3 - Strength, 4 - Personal Training, 5 - Group Classes, 6 - Yoga Training
+        },
+        serviceName: {
+          type: String,
+          required: true,
         },
         serviceCharge: {
           monthly: { type: Number, required: true }, // Price for monthly subscription
@@ -84,10 +86,13 @@ const GymSchema = new Schema(
     // History of service price changes
     servicesPriceChangeHistory: [
       {
-        serviceName: {
+        serviceNumber: {
           type: Number,
           required: true,
-          enum: [1, 2, 3, 4, 5, 6], // Track the same service names
+        },
+        serviceName: {
+          type: String,
+          required: true,
         },
         subscriptionType: {
           type: String,
@@ -100,7 +105,7 @@ const GymSchema = new Schema(
       },
     ],
 
-    // Payment history of the gym
+    // Payment history of the gym owner
     paymentHistory: [
       {
         amountPaid: { type: Number, required: true },
@@ -116,12 +121,12 @@ const GymSchema = new Schema(
 
     expenses: [
       {
-        month: { type: String, required: true },  // e.g., "August"
-        year: { type: String, required: true },   // e.g., "2024"
-        expenseName: { type: String, required: true },  // e.g., "Rent"
-        totalAmount: { type: Number, required: true },  // e.g., 1500
-        createdAt: { type: Date, default: Date.now }
-      }
+        month: { type: String, required: true }, // e.g., "August"
+        year: { type: String, required: true }, // e.g., "2024"
+        expenseName: { type: String, required: true }, // e.g., "Rent"
+        totalAmount: { type: Number, required: true }, // e.g., 1500
+        createdAt: { type: Date, default: Date.now },
+      },
     ],
 
     // Gym operating hours for each day
@@ -143,6 +148,8 @@ const GymSchema = new Schema(
 
     // Refresh token for authentication
     refreshToken: { type: String },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: String },
   },
   { timestamps: true } // Automatically add createdAt and updatedAt timestamps
 );

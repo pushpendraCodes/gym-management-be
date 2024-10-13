@@ -54,7 +54,7 @@ const addMember = async (req, res) => {
   // const payHistory = JSON.parse(req.body.payHistory);
 
   // Check if the user already exists
-  const existedUser = await Member.findOne({ mobile });
+  const existedUser = await Member.findOne({ mobile, gymId: req.gym._id });
   if (existedUser) {
     return res.status(409).json("user with this mobile is already exists");
   }
@@ -117,7 +117,7 @@ const addMember = async (req, res) => {
     memberId: member._id,
     amount: member.fees,
     paymentMode: payMethode,
-    gymId:req.gym._id
+    gymId: req.gym._id,
   });
 
   if (!member || !feesPay) {
@@ -269,7 +269,12 @@ const updateFees = async (req, res) => {
 
     // Create fees record and retrieve fees history
     const [memberFees, feesHistory, member] = await Promise.all([
-      Fees.create({ memberId: id, amount: fees, paymentMode ,gymId:req.gym._id}),
+      Fees.create({
+        memberId: id,
+        amount: fees,
+        paymentMode,
+        gymId: req.gym._id,
+      }),
       Fees.find({ memberId: id }),
       Member.findById(id),
     ]);
@@ -316,21 +321,7 @@ const getMembers = async (req, res) => {
         case "G-1":
           query = query.where({ gender: 1 });
           break;
-        case "T-1":
-          query = query.where({ training: { $in: [1, 2] } });
-          break;
-        case "T-3":
-          query = query.where({ training: 3 });
-          break;
-        case "T-4":
-          query = query.where({ training: 4 });
-          break;
-        case "T-5":
-          query = query.where({ training: 5 });
-          break;
-        case "T-6":
-          query = query.where({ training: 6 });
-          break;
+
         case "duesoon":
           const today = new Date();
           const dueSoonDate = new Date(
@@ -362,11 +353,24 @@ const getMembers = async (req, res) => {
 
       totalMemberssQuery = totalMemberssQuery.find(query.getQuery()); // Apply same filters to total count query
     }
+    console.log(req.query.subsType, "req.query.subsType");
+    if (req.query.subsType && req.query.subsType !== "undefined") {
+      const subscriptionType = Number(req.query.subsType); // Convert to Number
+
+      // Check if the conversion is successful and is a valid number
+      if (!isNaN(subscriptionType)) {
+        query = query.where({ training: subscriptionType });
+        totalMemberssQuery = totalMemberssQuery.find(query.getQuery());
+      } else {
+        console.error("Invalid subscription type: ", req.query.subsType);
+      }
+    }
 
     if (req.query.search) {
       query = Member.find({
         $or: [
           { firstName: { $regex: req.query.search, $options: "i" } },
+          { lastName: { $regex: req.query.search, $options: "i" } },
           { mobile: { $regex: req.query.search, $options: "i" } },
         ],
         gymId: req.gym._id,
@@ -389,8 +393,8 @@ const getMembers = async (req, res) => {
       query = query.skip(pageSize * (page - 1)).limit(pageSize);
     }
 
-    const docs = await query.exec(); // Execute the query
-    // console.log(docs, "docs");
+    const docs = (await query.exec()); // Execute the query
+    console.log(docs, "docs");
 
     // Set total count in headers and send response
     res.set("X-Total-Count", totalDocs);
@@ -405,7 +409,9 @@ const getMembers = async (req, res) => {
 const fetchAllMember = async (req, res) => {
   try {
     let members = await Member.find({ gymId: req.gym._id });
-    res.status(200).json({ members: members, msg: "Members fetched successfully" });
+    res
+      .status(200)
+      .json({ members: members, msg: "Members fetched successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

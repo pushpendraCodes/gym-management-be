@@ -1,5 +1,9 @@
 const Gym = require("../models/Gym");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto"); // For generating reset token
+const bcrypt = require("bcryptjs");
+const { sendMail, passResetTemplate } = require("../utils/sendMail");
+
 const generateAccessAndRefereshTokens = async ({ userId, res }) => {
   try {
     console.log(userId, "res");
@@ -117,7 +121,7 @@ const gymLogOut = async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json({msg: "User logged Out"},);
+    .json({ msg: "User logged Out" });
 };
 
 const refreshAccessToken = async (req, res) => {
@@ -174,4 +178,78 @@ const refreshAccessToken = async (req, res) => {
   }
 };
 
-module.exports = { gymSignIn, gymLogOut, refreshAccessToken };
+const requestResetPassword = async (req, res) => {
+  const { email } = req.body;
+  console.log(email, "email");
+
+  try {
+    // Find the user by email
+    const user = await Gym.findOne({ email: email });
+    console.log(user, "user");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate reset token and expiration date
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
+
+    // Update user with reset token and expiration
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = resetPasswordExpires;
+    await user.save({ validateModifiedOnly: true });
+
+    // Send reset email
+    const resetUrl = `http://localhost:5173/set-new-password?${resetToken}`;
+    const message = `Click the link to reset your password: ${resetUrl}`;
+
+    await sendMail({
+      to: email,
+      subject: "Password Reset Request",
+      text: message,
+      html: passResetTemplate(resetUrl),
+    });
+
+    res.json({ message: "Password reset link sent to email" });
+  } catch (error) {
+    console.log(error, "err");
+    res.status(500).json({ message: "Error sending reset email" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+  console.log(password, token, "password");
+
+  try {
+    // Find user by reset token and check if the token is still valid
+    const user = await Gym.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save({ validateModifiedOnly: true });
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    console.log(error, "error");
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = {
+  gymSignIn,
+  gymLogOut,
+  refreshAccessToken,
+  requestResetPassword,
+  resetPassword,
+};

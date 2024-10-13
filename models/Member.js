@@ -13,7 +13,7 @@ const memberSchema = new Schema(
     lastName: { type: String, required: true, trim: true, maxlength: 50 },
     mobile: {
       type: String,
-      unique: true,
+      // unique: true,
       required: true,
       match: [/^\d{10}$/, "Please enter a valid 10-digit mobile number"],
     },
@@ -25,10 +25,10 @@ const memberSchema = new Schema(
     address: { type: String, maxlength: 200 },
     training: {
       type: Number,
-      enum: {
-        values: trainingEnum,
-        message: "enum validator failed for trainingType",
-      },
+      // enum: {
+      //   values: trainingEnum,
+      //   message: "enum validator failed for trainingType",
+      // },
       required: true,
     }, // Training enum (1-4)
     picture: { type: String }, // Optional, consider a default placeholder
