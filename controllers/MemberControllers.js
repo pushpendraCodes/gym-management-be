@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const { Member } = require("../models/Member");
 const { Fees } = require("../models/Fees");
 const { uploadOnCloudinary } = require("../utils/Cloudinary");
+const { joinNewMemberTemplate, sendMail } = require("../utils/sendMail");
+const Gym = require("../models/Gym");
 
 const convertToDateFormat = (dateString) => {
   const date = new Date(dateString); // Parse the input date string
@@ -49,6 +51,7 @@ const addMember = async (req, res) => {
     fees,
     SubscriptionType,
     payMethode,
+    email
   } = req.body;
 
   // const payHistory = JSON.parse(req.body.payHistory);
@@ -106,6 +109,7 @@ const addMember = async (req, res) => {
     address,
     training,
     fees,
+    email,
     // payHistory,
     dueDate: formattedDate,
     SubscriptionType,
@@ -125,6 +129,16 @@ const addMember = async (req, res) => {
       .status(500)
       .json("Something went wrong while registering the member");
   }
+
+  const gym = await Gym.findById(req.gym._id)
+
+
+  await sendMail({
+    to: email,
+  subject: "Welcome to Our Gym!",
+    // text: message,
+    html: joinNewMemberTemplate({member,gym}),
+  });
 
   return res.status(201).json({
     message: "Member registered successfully",

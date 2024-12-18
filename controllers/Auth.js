@@ -99,6 +99,50 @@ const gymSignIn = async (req, res) => {
     });
 };
 
+const demogymSignIn = async (req, res) => {
+  const email  = "curlFitness@mail.com"
+  const password = "123456@"
+
+  const gym = await Gym.findOne({
+    email,
+  });
+
+  if (!gym) {
+    res.status(404).json({ msg: "user does not exist" });
+  }
+
+  const isPasswordValid = await gym.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    res.status(401).json({ msg: "Invalid user credentials" });
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefereshTokens({
+    userId: gym._id,
+    res,
+  });
+
+  const loggedGym = await Gym.findById(gym._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json({
+      gym: loggedGym,
+      accessToken,
+      refreshToken,
+      msg: "User logged In Successfully",
+    });
+};
+
 const gymLogOut = async (req, res) => {
   await Gym.findByIdAndUpdate(
     req.gym._id,
@@ -252,4 +296,5 @@ module.exports = {
   refreshAccessToken,
   requestResetPassword,
   resetPassword,
+  demogymSignIn
 };

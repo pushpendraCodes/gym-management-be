@@ -17,6 +17,11 @@ const memberSchema = new Schema(
       required: true,
       match: [/^\d{10}$/, "Please enter a valid 10-digit mobile number"],
     },
+    email:{
+      type: String,
+      unique: true,
+
+    },
     gender: {
       type: String,
       enum: [1, 2], //1-male ,2-female
